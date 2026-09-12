@@ -9,16 +9,16 @@ src_list = {'caltech', 'caltech', 'caltech', 'amazon', 'amazon', 'amazon', ...
 tgt_list = {'amazon', 'webcam', 'dslr', 'caltech', 'webcam', 'dslr', ...
     'caltech', 'amazon', 'dslr', 'caltech', 'amazon', 'webcam'};
 
-options.gamma = 1;
-options.mu = 0.1;
+options.srm_gamma = 1;
+options.srm_mu = 0.1;
 options.T = 10;
 options.dim = 50;
 options.k = 16;
-options.rrr = 0.1;
-options.O = 4;
-options.M_mu = 0.9;
-options.alpha = 5;
 options.lambda = 0.1;
+options.O = 4;
+options.mu = 0.9;
+options.alpha = 5;
+options.gamma = 0.1;
 
 n_task = length(src_list);
 result = zeros(options.T, n_task);

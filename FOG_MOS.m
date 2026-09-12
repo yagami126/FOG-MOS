@@ -3,10 +3,14 @@ T = options.T;
 dim = options.dim;
 k = options.k;
 O = options.O;
-rrr = options.rrr;
-mu = options.M_mu;
-alpha = options.alpha;
 lambda = options.lambda;
+mu = options.mu;
+alpha = options.alpha;
+gamma = options.gamma;
+
+classifier_options = options;
+classifier_options.gamma = options.srm_gamma;
+classifier_options.mu = options.srm_mu;
 
 Xs = normr(Xs')';
 Xt = normr(Xt')';
@@ -22,12 +26,12 @@ acc = 0;
 acc_ite = zeros(1, T);
 obj = zeros(1, T);
 
-Ytpseudo = predictWithSRM(Xs, Xt, Ys, options);
+Ytpseudo = predictWithSRM(Xs, Xt, Ys, classifier_options);
 
 Ps = buildMultiOrderGraph(Xs, k, O);
 Pt = buildMultiOrderGraph(Xt, k, O);
-Ss = learnFlexibleGraph(Xs, Ps, rrr);
-St = learnFlexibleGraph(Xt, Pt, rrr);
+Ss = learnFlexibleGraph(Xs, Ps, lambda);
+St = learnFlexibleGraph(Xt, Pt, lambda);
 
 M0 = buildMarginalMmdMatrix(Xs, Xt, C);
 H = buildCenteringMatrix(n);
@@ -51,7 +55,7 @@ for i = 1:T
     G = G ./ norm(G, 'fro');
     M = M ./ norm(M, 'fro');
 
-    left = X * M * X' + G + lambda * eye(m);
+    left = X * M * X' + G + gamma * eye(m);
     [A, ~] = eigs(left, right, dim, 'sm');
 
     F = alpha * ((2 * L + alpha * eye(size(L))) \ (X' * A));
@@ -61,15 +65,15 @@ for i = 1:T
     AX = normalizeRowsL2(AX')';
     AXs = AX(:, 1:ns);
     AXt = AX(:, ns + 1:end);
-    Ytpseudo = predictWithSRM(AXs, AXt, Ys, options);
+    Ytpseudo = predictWithSRM(AXs, AXt, Ys, classifier_options);
 
-    Ss = learnFlexibleGraph(F(:, 1:ns), Ps, rrr);
-    St = learnFlexibleGraph(F(:, ns + 1:end), Pt, rrr);
+    Ss = learnFlexibleGraph(F(:, 1:ns), Ps, lambda);
+    St = learnFlexibleGraph(F(:, ns + 1:end), Pt, lambda);
 
     acc = classificationAccuracy(Ytpseudo, Yt);
     acc_ite(i) = acc;
     obj(i) = objective_value(A, F, Ss, St, Ps, Pt, X, M, ...
-        alpha, rrr, lambda, ns);
+        alpha, lambda, gamma, ns);
     fprintf('[%2d] acc:%.4f\n', i, acc * 100);
 end
 
@@ -88,7 +92,7 @@ L = eye(n) - D * S * D;
 end
 
 function value = objective_value(W, F, Ss, St, Ps, Pt, X, M, ...
-        alpha, rrr, lambda, ns)
+        alpha, lambda, gamma, ns)
 Fs = F(:, 1:ns);
 Ft = F(:, ns + 1:end);
 Ds = squaredEuclideanDistance(Fs, Fs);
@@ -97,9 +101,9 @@ Dt = squaredEuclideanDistance(Ft, Ft);
 distribution = trace(W' * X * M * X' * W);
 graph = sum(sum(Ds .* Ss)) + sum(sum(Dt .* St));
 reconstruction = alpha * norm(X' * W - F', 'fro')^2;
-similarity = rrr * (norm(Ss - Ps, 'fro')^2 + ...
+similarity = lambda * (norm(Ss - Ps, 'fro')^2 + ...
     norm(St - Pt, 'fro')^2);
-regularization = lambda * norm(W, 'fro')^2;
+regularization = gamma * norm(W, 'fro')^2;
 
 value = real(distribution + graph + reconstruction + similarity + ...
     regularization);
