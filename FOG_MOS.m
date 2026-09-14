@@ -15,7 +15,7 @@ classifier_options.mu = options.srm_mu;
 Xs = normr(Xs')';
 Xt = normr(Xt')';
 X = [Xs, Xt];
-X = normalizeRowsL2(X')';
+X = L2Norm(X')';
 
 [m, ns] = size(Xs);
 nt = size(Xt, 2);
@@ -26,15 +26,15 @@ acc = 0;
 acc_ite = zeros(1, T);
 obj = zeros(1, T);
 
-Ytpseudo = predictWithSRM(Xs, Xt, Ys, classifier_options);
+Ytpseudo = SRM(Xs, Xt, Ys, classifier_options);
 
 Ps = buildMultiOrderGraph(Xs, k, O);
 Pt = buildMultiOrderGraph(Xt, k, O);
 Ss = learnFlexibleGraph(Xs, Ps, lambda);
 St = learnFlexibleGraph(Xt, Pt, lambda);
 
-M0 = buildMarginalMmdMatrix(Xs, Xt, C);
-H = buildCenteringMatrix(n);
+M0 = marginalDistribution(Xs, Xt, C);
+H = centeringMatrix(n);
 right = X * H * X';
 
 for i = 1:T
@@ -45,7 +45,7 @@ for i = 1:T
     if isempty(Ytpseudo)
         M = M0;
     else
-        Mc = buildConditionalMmdMatrix(Xs, Xt, Ys, Ytpseudo, C);
+        Mc = conditionalDistribution(Xs, Xt, Ys, Ytpseudo, C);
         M = (1 - mu) * M0 + mu * Mc;
     end
 
@@ -62,15 +62,15 @@ for i = 1:T
     F = F';
 
     AX = A' * X;
-    AX = normalizeRowsL2(AX')';
+    AX = L2Norm(AX')';
     AXs = AX(:, 1:ns);
     AXt = AX(:, ns + 1:end);
-    Ytpseudo = predictWithSRM(AXs, AXt, Ys, classifier_options);
+    Ytpseudo = SRM(AXs, AXt, Ys, classifier_options);
 
     Ss = learnFlexibleGraph(F(:, 1:ns), Ps, lambda);
     St = learnFlexibleGraph(F(:, ns + 1:end), Pt, lambda);
 
-    acc = classificationAccuracy(Ytpseudo, Yt);
+    acc = getAcc(Ytpseudo, Yt);
     acc_ite(i) = acc;
     obj(i) = objective_value(A, F, Ss, St, Ps, Pt, X, M, ...
         alpha, lambda, gamma, ns);
